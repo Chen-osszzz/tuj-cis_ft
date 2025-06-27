@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_ORDERS 100
+
+typedef enum { BUY, SELL } OrderType;
+
+typedef struct {
+    int id;
+    OrderType type;
+    float price;
+    int quantity;
+} Order;
+
+Order orderBook[MAX_ORDERS];
+int orderCount = 0;
+int orderID = 1;
+
+// Logging function
+void logOrder(const Order* order, const char* action) {
+    printf("[LOG] %s Order ID: %d | Type: %s | Price: %.2f | Qty: %d\n",
+           action, order->id,
+           order->type == BUY ? "BUY" : "SELL",
+           order->price, order->quantity);
+}
+
+// Match engine
+void matchOrders() {
+    for (int i = 0; i < orderCount; i++) {
+        if (orderBook[i].quantity == 0) continue;
+
+        for (int j = i + 1; j < orderCount; j++) {
+            if (orderBook[j].quantity == 0) continue;
+
+            if (orderBook[i].type != orderBook[j].type &&
+                ((orderBook[i].type == BUY && orderBook[i].price >= orderBook[j].price) ||
+                 (orderBook[i].type == SELL && orderBook[i].price <= orderBook[j].price))) {
+
+                int tradedQty = orderBook[i].quantity < orderBook[j].quantity ?
+                                orderBook[i].quantity : orderBook[j].quantity;
+
+                printf("✅ Matched: BUY %d and SELL %d for %.2f x %d units\n",
+                       orderBook[i].type == BUY ? orderBook[i].id : orderBook[j].id,
+                       orderBook[i].type == SELL ? orderBook[i].id : orderBook[j].id,
+                       orderBook[i].price, tradedQty);
+
+                orderBook[i].quantity -= tradedQty;
+                orderBook[j].quantity -= tradedQty;
+
+                if (orderBook[i].quantity == 0) break;  // fully filled
+            }
+        }
+    }
+}
+
+// Add order to order book
+void addOrder(OrderType type, float price, int quantity) {
+    if (orderCount >= MAX_ORDERS) {
+        printf("❌ Order book is full.\n");
+        return;
+    }
+
+    Order newOrder = { .id = orderID++, .type = type, .price = price, .quantity = quantity };
+    orderBook[orderCount++] = newOrder;
+    logOrder(&newOrder, "Added");
+    matchOrders();
+}
+
+int main() {
+    printf("📈 Simple C Order Matching Engine\n");
+
+    addOrder(BUY, 100.0, 10);
+    addOrder(SELL, 98.0, 5);
+    addOrder(SELL, 99.0, 5);
+    addOrder(BUY, 101.0, 15);
+    addOrder(SELL, 101.0, 20);
+
+    printf("\n📊 Final Order Book:\n");
+    for (int i = 0; i < orderCount; i++) {
+        if (orderBook[i].quantity > 0) {
+            printf("ID:%d | %s | Price: %.2f | Qty: %d\n",
+                   orderBook[i].id,
+                   orderBook[i].type == BUY ? "BUY " : "SELL",
+                   orderBook[i].price,
+                   orderBook[i].quantity);
+        }
+    }
+
+    return 0;
+}
